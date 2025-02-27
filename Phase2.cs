@@ -1,41 +1,73 @@
-﻿using System;
+using System;
 using System.Diagnostics;
-using System.Threading; //Phase 2
+using System.Threading; //Phase 2 | Synchronization validation
 
+class bankAccount
+{
+    private int accountBalance = 20000; //default account balance
+    private object lockObj = new object(); //locks safety for synchronization
+    
+    public void Deposit(int amount)
+    {
+        lock (lockObj) //keeps the thread safe
+        {
+            int depositAmount = (int)amount;
+            accountBalance += depositAmount; //add money to the customer account
+            Console.WriteLine("Deposited: " +amount+ " Remaining balance: "+ accountBalance);
+            Thread.Sleep(200); //adding an intentional delay to test the synchornization
+        }
+    }
+    public void Withdraw(int amount)
+    {
+        lock (lockObj)
+        {
+            if (accountBalance < amount) //if customers balance is less than the withdraw amount the transaction doesn't go through
+            {
+                Console.WriteLine("You don't have enough money to withdraw");
+            }
+            else //else if the customer balance is enough then they can withdraw money.
+            {
+                Thread.Sleep(200); //testing synchronization
+                accountBalance -= amount;
+                Console.WriteLine("Withdrawn: "+amount+" Remaining balance: " + accountBalance);
+            }
+            
+        }
+    }
+
+}
 
 class Phase2
 {
-    static int accountBalance = 20000; //bank balance that is shared between the two methods.
-    static object lockObject = new object(); //lock object
     static void Main(string[] args)
     {
-        Thread thread1 = new Thread(Deposit); //creation of the concurrent threads
-        Thread thread2 = new Thread(Withdraw);
-        thread1.Start(1500);
-        thread2.Start(9000); //thread 1 and thread 2 start at the same time to perform deposit and withdrawal
-
-        thread1.Join();
-        thread2.Join();
-        Console.WriteLine("Final account balance: " + accountBalance);
-    }
-
-    static void Deposit(object amount)
-    {
-        lock (lockObject) //Initiates the lock
+        bankAccount customerAccount = new bankAccount(); //creates the object
+        Thread[] customers = new Thread[8]; //creation of the customer threads 
+        
+        for (int i = 0; i < customers.Length; i++)
         {
-            int depositAmount = (int)amount;
-            accountBalance += depositAmount;                                   //this time the locks are placed to protect the shared resource accountBalance
-            Console.WriteLine("Deposited:" + accountBalance);
-        } //Releases the lock
-    }
-    static void Withdraw(object amount)
-    {
-        lock (lockObject) //intiates the lock
+            customers[i] = new Thread(() =>
+            {
+                //starts creating separate customers for transactions
+                for (int j = 0; j < 10; j++)
+                {
+                    customerAccount.Withdraw(9700);
+                    customerAccount.Deposit(6500);
+                }
+            });
+            customers[i].Start(); // Start all threads first
+        }
+
+        // Wait for all threads to finish execution
+        foreach (var customer in customers)
         {
-            int withdrawAmount = (int)amount;
-            accountBalance -= withdrawAmount;
-            Console.WriteLine("Withdrawn:" + accountBalance);
-        } //Releases the lock
+            customer.Join();
+        }
+
+        Console.WriteLine("Teller: All transactions are complete."); // Indicates that all threads are complete
     }
-    //Adding the lock prevents the race condition from occuring making the threads more safer. With the addtion of the lock only one thread at a time can access the accountBalance variable.
+    
 }
+////Adding the lock prevents the race condition from occuring making the threads more safer.
+/// The program runs slower.
+//Testing under the delayed conditions that the synchronization still operates as normal.
